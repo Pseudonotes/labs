@@ -1,0 +1,7 @@
+.archives
+.idea
+.venv
+.git
+.env
+*/.gradle/**
+*/build/**

@@ -1,0 +1,202 @@
+info:
+  title: Users REST API
+  description: API for managing user resources
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.example.com
+    description: Production server
+
+tags:
+  - name: Users
+    description: User management operations
+
+paths:
+  /api/auth/users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      description: Retrieves a paginated list of all users
+      operationId: allUsers
+      parameters:
+        - name: pageSize
+          in: query
+          description: Number of users per page (must be between 5 and 20)
+          required: false
+          schema:
+            type: integer
+            minimum: 5
+            maximum: 20
+            default: 20
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResponseWrapper'
+        '400':
+          description: Invalid page size parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/users/create:
+    post:
+      tags:
+        - Users
+      summary: Create a new user
+      description: Creates a new user with the provided information
+      operationId: createUser
+      requestBody:
+        description: User object to be created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserDto'
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponseWrapper'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      description: Retrieves a specific user by their unique identifier
+      operationId: userById
+      parameters:
+        - name: id
+          in: path
+          description: User ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponseWrapper'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    UserDto:
+      type: object
+      required:
+        - id
+        - displayName
+        - email
+        - password
+        - dateUpdated
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier for the user
+          example: 1
+        displayName:
+          type: string
+          description: Display name of the user
+          example: John Doe
+        email:
+          type: string
+          format: email
+          description: Email address of the user
+          example: john.doe@example.com
+        password:
+          type: string
+          format: password
+          description: User password
+          example: securePassword123
+        dateUpdated:
+          type: integer
+          format: int64
+          description: Timestamp of last update (Unix epoch in milliseconds)
+          example: 1702915200000
+
+    UserResponseWrapper:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/UserDto'
+        message:
+          type: string
+          nullable: true
+          description: Optional message about the operation
+          example: User retrieved successfully
+        status:
+          type: boolean
+          description: Operation status
+          example: true
+
+    PageResponseWrapper:
+      type: object
+      properties:
+        data:
+          type: object
+          description: Page object containing user list
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserDto'
+            totalElements:
+              type: integer
+              format: int64
+              example: 100
+            totalPages:
+              type: integer
+              example: 5
+            size:
+              type: integer
+              example: 20
+            number:
+              type: integer
+              example: 0
+        message:
+          type: string
+          nullable: true
+          example: Users retrieved successfully
+        status:
+          type: boolean
+          example: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          nullable: true
+        message:
+          type: string
+          description: Error message
+          example: Page limit is 5-20
+        status:
+          type: boolean
+          example: false

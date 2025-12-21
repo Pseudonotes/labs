@@ -1,0 +1,35 @@
+spring:
+  profiles:
+    active: local
+  application:
+    name: mail-server
+
+  cloud:
+    config:
+      server:
+        awss3:
+          region:
+          bucket:
+    s3:
+      uri: mail-server-directory--eun1-az3--x-s3
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: juniorprogrammer09@gmail.com
+    password: [password-here]
+
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+logging:
+  level:
+    org.springframework.mail: DEBUG
+    javax.mail: DEBUG

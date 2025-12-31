@@ -1,6 +1,8 @@
+openapi: 3.0.0
+
 info:
   title: Users REST API
-  description: API for managing user resources
+  description: API for managing user resources with JWT authentication
   version: 1.0.0
   contact:
     name: API Support
@@ -12,19 +14,129 @@ servers:
     description: Production server
 
 tags:
+  - name: Authentication
+    description: User authentication operations (public endpoints)
   - name: Users
-    description: User management operations
+    description: User management operations (public endpoints)
 
 paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Creates a new user account and returns access token
+      operationId: register
+      security: []
+      requestBody:
+        description: User registration details
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserDto'
+      responses:
+        '200':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid input or missing fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: Authenticates user and returns access token
+      operationId: login
+      security: []
+      requestBody:
+        description: User login credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - textPasswordValue
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john.doe@example.com
+                textPasswordValue:
+                  type: string
+                  format: password
+                  example: securePassword123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/account:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user account
+      description: Retrieves the authenticated user's account information
+      operationId: myAccount
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Authorization
+          in: header
+          description: JWT Bearer token
+          required: true
+          schema:
+            type: string
+            example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: Account retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponseWrapper'
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/auth/users:
     get:
       tags:
         - Users
       summary: Get all users
-      description: Retrieves a paginated list of all users
+      description: Retrieves a paginated list of all users (public endpoint)
       operationId: allUsers
+      security: []
       parameters:
-        - name: pageSize
+        - name: pages
           in: query
           description: Number of users per page (must be between 5 and 20)
           required: false
@@ -33,6 +145,12 @@ paths:
             minimum: 5
             maximum: 20
             default: 20
+        - name: name
+          in: query
+          description: Filter users by display name
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           description: Successful operation
@@ -52,8 +170,9 @@ paths:
       tags:
         - Users
       summary: Create a new user
-      description: Creates a new user with the provided information
+      description: Creates a new user with the provided information (public endpoint)
       operationId: createUser
+      security: []
       requestBody:
         description: User object to be created
         required: true
@@ -67,7 +186,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserResponseWrapper'
+                type: object
+                properties:
+                  data:
+                    type: string
+                    example: Account created successfully.
+                  message:
+                    type: string
+                    nullable: true
+                  status:
+                    type: boolean
+                    example: true
         '400':
           description: Invalid input
           content:
@@ -80,8 +209,9 @@ paths:
       tags:
         - Users
       summary: Get user by ID
-      description: Retrieves a specific user by their unique identifier
+      description: Retrieves a specific user by their unique identifier (public endpoint)
       operationId: userById
+      security: []
       parameters:
         - name: id
           in: path
@@ -104,16 +234,49 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/auth/users/user/{name}:
+    get:
+      tags:
+        - Users
+      summary: Get user by display name
+      description: Retrieves a specific user by their display name (public endpoint)
+      operationId: userByDisplayName
+      security: []
+      parameters:
+        - name: name
+          in: path
+          description: User display name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponseWrapper'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT authentication token
+
   schemas:
     UserDto:
       type: object
       required:
-        - id
         - displayName
         - email
-        - password
-        - dateUpdated
       properties:
         id:
           type: integer
@@ -132,13 +295,29 @@ components:
         password:
           type: string
           format: password
-          description: User password
+          description: Encrypted user password
+          nullable: true
+          example: null
+        textPasswordValue:
+          type: string
+          format: password
+          description: Plain text password (only for login/registration)
           example: securePassword123
         dateUpdated:
           type: integer
           format: int64
           description: Timestamp of last update (Unix epoch in milliseconds)
           example: 1702915200000
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        userDto:
+          $ref: '#/components/schemas/UserDto'
 
     UserResponseWrapper:
       type: object
@@ -200,3 +379,6 @@ components:
         status:
           type: boolean
           example: false
+
+security:
+  - bearerAuth: []
